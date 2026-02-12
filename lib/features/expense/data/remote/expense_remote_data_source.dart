@@ -10,45 +10,37 @@ class ExpenseRemoteDataSource {
     ),
   );
 
-  /// Currency Conversion API
-Future<double> convertCurrency({
-  required double amount,
-  required String from,
-  required String to,
-}) async {
-  try {
-    final response = await dio.get(
-      'https://api.exchangerate.host/convert',
-      queryParameters: {
-        'from': from,
-        'to': to,
-        'amount': amount,
-      },
-    );
+  Future<double> convertCurrency({
+    required double amount,
+    required String from,
+    required String to,
+  }) async {
+    try {
+      final response = await dio.get(
+        'https://api.frankfurter.app/latest',
+        queryParameters: {
+          'amount': amount,
+          'from': from,
+          'to': to,
+        },
+      );
 
-    final data = response.data;
+      final data = response.data;
 
-    if (data == null || data['result'] == null) {
-      throw Exception("Invalid conversion response");
+      if (data == null ||
+          data['rates'] == null ||
+          data['rates'][to] == null) {
+        throw Exception("Invalid conversion response");
+      }
+
+      return (data['rates'][to] as num).toDouble();
+    } catch (e) {
+      debugPrint("Currency conversion failed: $e");
+      return amount;
     }
-
-    return (data['result'] as num).toDouble();
-  } catch (e) {
-    debugPrint("Currency conversion failed: $e");
-
-    // fallback: return original amount
-    return amount;
   }
-}
 
-
-  /// Mock Sync to Server
-  /// In real app → send to backend
   Future<void> syncExpense(ExpenseModel expense) async {
     await Future.delayed(const Duration(milliseconds: 500));
-
-    // Simulate network success
-    // If you want to simulate failure randomly:
-    // if (Random().nextBool()) throw Exception("Sync failed");
   }
 }

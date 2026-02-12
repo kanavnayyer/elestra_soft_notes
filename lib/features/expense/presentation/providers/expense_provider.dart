@@ -1,19 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../data/models/expense_model.dart';
 import '../../domain/expense_repository.dart';
 
 class ExpenseProvider extends ChangeNotifier {
   final ExpenseRepository repository;
 
-  ExpenseProvider({required this.repository});
+  ExpenseProvider({required this.repository}) {
+    _init();
+  }
 
   List<ExpenseModel> _expenses = [];
   bool _isLoading = false;
+  bool _isSyncing = false;
   String _baseCurrency = "USD";
 
   List<ExpenseModel> get expenses => _expenses;
   bool get isLoading => _isLoading;
+  bool get isSyncing => _isSyncing;
   String get baseCurrency => _baseCurrency;
+
+  /// Init
+  void _init() async {
+    await loadExpenses();
+    await syncExpenses(); // try immediate sync
+    _listenToConnectivity();
+  }
+
+  /// Listen for internet changes
+  void _listenToConnectivity() {
+    Connectivity().onConnectivityChanged.listen((result) {
+      if (result != ConnectivityResult.none) {
+        syncExpenses();
+      }
+    });
+  }
 
   /// Load Expenses
   Future<void> loadExpenses() async {
@@ -38,10 +59,18 @@ class ExpenseProvider extends ChangeNotifier {
     await loadExpenses();
   }
 
-  /// Sync Pending (Call when internet reconnects)
+  /// Sync Pending Expenses
   Future<void> syncExpenses() async {
+    if (_isSyncing) return;
+
+    _isSyncing = true;
+    notifyListeners();
+
     await repository.syncPendingExpenses();
     await loadExpenses();
+
+    _isSyncing = false;
+    notifyListeners();
   }
 
   /// Change Base Currency
